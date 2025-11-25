@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import jwt, { JwtPayload, TokenExpiredError, JsonWebTokenError } from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import Admin from "../models/Admin.js";
 import { sendError } from "../utils/responseHelpers.js";
 
@@ -49,12 +49,12 @@ export const protect = async (
         try {
             decoded = verifyToken(token);
         } catch (error) {
-            if (error instanceof TokenExpiredError) {
-                return sendError(res, 401, "Token expired");
+            if (error instanceof jwt.TokenExpiredError) {
+                return sendError(res, 401, "Refresh token expired");
             }
 
-            if (error instanceof JsonWebTokenError) {
-                return sendError(res, 401, "Invalid token");
+            if (error instanceof jwt.JsonWebTokenError) {
+                return sendError(res, 401, "Invalid refresh token");
             }
 
             throw error;
