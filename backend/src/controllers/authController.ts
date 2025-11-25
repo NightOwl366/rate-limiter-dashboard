@@ -1,6 +1,6 @@
 import Admin, { IAdminDocument } from "../models/Admin.js";
 import { Request, Response } from "express";
-import jwt, { JwtPayload, TokenExpiredError, JsonWebTokenError } from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { sendSuccess, sendError } from "../utils/responseHelpers.js";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -144,11 +144,11 @@ export const refreshToken = async (
     } catch (error) {
       clearRefreshTokenCookie(res);
 
-      if (error instanceof TokenExpiredError) {
+      if (error instanceof jwt.TokenExpiredError) {
         return sendError(res, 401, "Refresh token expired");
       }
 
-      if (error instanceof JsonWebTokenError) {
+      if (error instanceof jwt.JsonWebTokenError) {
         return sendError(res, 401, "Invalid refresh token");
       }
 
