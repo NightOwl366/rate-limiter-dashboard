@@ -32,6 +32,15 @@ interface DecodedToken extends JwtPayload {
   role: string;
 }
 
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET is not defined in environment variables');
+}
+
+if (!process.env.JWT_REFRESH_SECRET) {
+  throw new Error('JWT_REFRESH_SECRET is not defined in environment variables');
+}
+
+
 const JWT_CONFIG = {
   secret: process.env.JWT_SECRET!,
   refreshSecret: process.env.JWT_REFRESH_SECRET!,

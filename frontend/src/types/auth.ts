@@ -1,15 +1,10 @@
-export interface LoginResponseData {
-  token: string;
-  admin: {
+export interface ResponseData {
+  accessToken: string;
+  user: {
     id: string;
     name: string;
     email: string;
     role: 'admin' | 'viewer';
-    isActive: boolean;
-    lastLogin: string | null;
   };
 }
 
-export interface RefreshResponseData {
-  token: string;
-}

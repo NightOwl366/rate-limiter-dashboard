@@ -2,10 +2,8 @@ import express, { Express } from "express";
 import helmet from "helmet";
 import compression from "compression";
 import cors from "cors";
-import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 
-dotenv.config();
 const app: Express = express();
 
 if (process.env.NODE_ENV === "production") {
