@@ -5,7 +5,7 @@ import type {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
-import { storage } from '../utils/storage.js';
+import { storage } from '@/utils/storage.js';
 
 interface ApiConfig {
   baseURL: string;
@@ -14,8 +14,17 @@ interface ApiConfig {
 }
 
 interface RefreshResponse {
+  success: boolean;
+  message: string;
+  timestamp: string;
   data: {
-    token: string;
+    accessToken: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      role: string;
+    };
   };
 }
 
@@ -68,6 +77,14 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
+      originalRequest.url?.includes('/auth/register') ||
+      originalRequest.url?.includes('/auth/signup');
+
+    if (isAuthEndpoint) {
+      return Promise.reject(error);
+    }
+
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         failedRequestsQueue.push({ resolve, reject });
@@ -86,7 +103,7 @@ apiClient.interceptors.response.use(
 
     try {
       const { data } = await apiClient.post<RefreshResponse>('/auth/refresh');
-      const newToken = data.data.token;
+      const newToken = data.data.accessToken;
 
       storage.setToken(newToken);
       if (originalRequest.headers) {
@@ -97,8 +114,13 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
+
+      const hadToken = !!storage.getToken();
       storage.clearAuth();
-      window.dispatchEvent(new Event('auth:session-expired'));
+      if (hadToken) {
+        window.dispatchEvent(new Event('auth:session-expired'));
+      }
+
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

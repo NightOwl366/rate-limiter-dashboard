@@ -15,12 +15,10 @@ import {
     FormMessage,
 } from '@/components/ui/form';
 import {
-    FieldDescription,
     FieldGroup,
 } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
-
-// --- ZOD SCHEMA ---
+import Loader from '@/components/kokonutui/loader';
 
 const loginSchema = z.object({
     email: z
@@ -34,8 +32,6 @@ const loginSchema = z.object({
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
-
-// --- COMPONENT ---
 
 const Login = () => {
     const { error, loading, submitForm, clearError } = useAuthForm('/auth/login');
@@ -55,102 +51,93 @@ const Login = () => {
     return (
         <div className="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
             <div className="w-full max-w-sm">
-                <div className={cn('flex flex-col gap-6')}>
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(submitForm)}>
-                            <FieldGroup>
-                                <div className="flex flex-col items-center gap-2 text-center">
-                                    <Link
-                                        to="/"
-                                        className="flex flex-col items-center gap-2 font-medium"
-                                    >
-                                        <div className="flex size-8 items-center justify-center rounded-md">
-                                            <GalleryVerticalEnd className="size-6" />
-                                        </div>
-                                        <span className="sr-only">Rate Limiter Dashboard</span>
-                                    </Link>
-                                    <h1 className="text-xl font-bold">Welcome Back</h1>
-                                    <FieldDescription>
-                                        Don&apos;t have an account?{' '}
-                                        <Link to="/signup" className="underline underline-offset-4">
-                                            Sign up
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center gap-4 py-12">
+                        <Loader
+                            title="Logging in..."
+                            subtitle="Please wait while we verify your credentials"
+                        />
+                    </div>
+                ) : (
+                    <div className={cn('flex flex-col gap-6')}>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(submitForm)}>
+                                <FieldGroup>
+                                    <div className="flex flex-col items-center gap-2 text-center">
+                                        <Link
+                                            to="/"
+                                            className="flex flex-col items-center gap-2 font-medium"
+                                        >
+                                            <div className="flex size-8 items-center justify-center rounded-md">
+                                                <GalleryVerticalEnd className="size-6" />
+                                            </div>
+                                            <span className="sr-only">Rate Limiter Dashboard</span>
                                         </Link>
-                                    </FieldDescription>
-                                </div>
-
-                                {error && (
-                                    <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                                        {error}
+                                        <h1 className="text-xl font-bold">Welcome Back</h1>
                                     </div>
-                                )}
 
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Email</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="email"
-                                                    placeholder="m@example.com"
-                                                    autoComplete="email"
-                                                    {...field}
-                                                    onChange={(e) => {
-                                                        field.onChange(e);
-                                                        handleInputChange();
-                                                    }}
-                                                    disabled={loading}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
+                                    {error && (
+                                        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                                            {error}
+                                        </div>
                                     )}
-                                />
 
-                                <FormField
-                                    control={form.control}
-                                    name="password"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Password</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="password"
-                                                    placeholder="Enter your password"
-                                                    autoComplete="current-password"
-                                                    {...field}
-                                                    onChange={(e) => {
-                                                        field.onChange(e);
-                                                        handleInputChange();
-                                                    }}
-                                                    disabled={loading}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                    <FormField
+                                        control={form.control}
+                                        name="email"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Email</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="email"
+                                                        placeholder="m@example.com"
+                                                        autoComplete="email"
+                                                        {...field}
+                                                        onChange={(e) => {
+                                                            field.onChange(e);
+                                                            handleInputChange();
+                                                        }}
+                                                        disabled={loading}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
 
-                                <Button type="submit" className="w-full" disabled={loading}>
-                                    {loading ? 'Logging in...' : 'Login'}
-                                </Button>
-                            </FieldGroup>
-                        </form>
-                    </Form>
+                                    <FormField
+                                        control={form.control}
+                                        name="password"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Password</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="password"
+                                                        placeholder="Enter your password"
+                                                        autoComplete="current-password"
+                                                        {...field}
+                                                        onChange={(e) => {
+                                                            field.onChange(e);
+                                                            handleInputChange();
+                                                        }}
+                                                        disabled={loading}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
 
-                    <FieldDescription className="px-6 text-center">
-                        By continuing, you agree to our{' '}
-                        <a href="#" className="underline underline-offset-4">
-                            Terms of Service
-                        </a>{' '}
-                        and{' '}
-                        <a href="#" className="underline underline-offset-4">
-                            Privacy Policy
-                        </a>
-                        .
-                    </FieldDescription>
-                </div>
+                                    <Button type="submit" className="w-full" disabled={loading}>
+                                        Login
+                                    </Button>
+                                </FieldGroup>
+                            </form>
+                        </Form>
+                    </div>
+                )}
             </div>
         </div>
     );

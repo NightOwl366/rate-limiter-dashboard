@@ -92,7 +92,6 @@ const adminSchema = new Schema<IAdminDocument, IAdminModel>({
   },
 });
 
-adminSchema.index({ email: 1 }, { unique: true });
 adminSchema.index({ email: 1, isActive: 1 });
 adminSchema.index({ role: 1, isActive: 1 });
 adminSchema.index({ createdAt: -1 });

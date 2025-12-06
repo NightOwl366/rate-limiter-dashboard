@@ -1,20 +1,18 @@
 import { createContext, useContext, useEffect, useReducer, useCallback } from 'react';
 import type { ReactNode } from "react";
-import { storage } from '../utils/storage.js';
+import { storage } from '@/utils/storage.js';
+import { toast } from 'sonner';
 
 type AdminRole = 'admin' | 'viewer';
 
-interface Admin {
+interface User {
     id: string;
     name: string;
     email: string;
     role: AdminRole;
-    isActive: boolean;
-    lastLogin: string | null;
 }
-
 interface AuthState {
-    admin: Admin | null;
+    user: User | null;
     token: string | null;
     isAuthenticated: boolean;
     isLoading: boolean;
@@ -22,15 +20,15 @@ interface AuthState {
 
 type AuthAction =
     | { type: 'SET_LOADING'; payload: boolean }
-    | { type: 'LOGIN_SUCCESS'; payload: { admin: Admin; token: string } }
+    | { type: 'LOGIN_SUCCESS'; payload: { user: User; token: string } }
     | { type: 'LOGOUT' }
-    | { type: 'RESTORE_SESSION'; payload: { admin: Admin | null; token: string } }
-    | { type: 'UPDATE_ADMIN'; payload: Partial<Admin> };
+    | { type: 'RESTORE_SESSION'; payload: { user: User | null; token: string } }
+    | { type: 'UPDATE_USER'; payload: Partial<User> };
 
 interface AuthContextValue extends AuthState {
-    login: (payload: { token: string; admin: Admin }) => void;
+    login: (payload: { token: string; user: User }) => void;
     logout: () => void;
-    updateAdmin: (updates: Partial<Admin>) => void;
+    updateUser: (updates: Partial<User>) => void;
     isAdmin: () => boolean;
     isViewer: () => boolean;
 }
@@ -43,7 +41,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         case 'LOGIN_SUCCESS':
             return {
                 ...state,
-                admin: action.payload.admin,
+                user: action.payload.user,
                 token: action.payload.token,
                 isAuthenticated: true,
                 isLoading: false
@@ -51,7 +49,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
         case 'LOGOUT':
             return {
-                admin: null,
+                user: null,
                 token: null,
                 isAuthenticated: false,
                 isLoading: false,
@@ -60,18 +58,18 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         case 'RESTORE_SESSION':
             return {
                 ...state,
-                admin: action.payload.admin,
+                user: action.payload.user,
                 token: action.payload.token,
                 isAuthenticated: !!action.payload.token,
                 isLoading: false,
             };
 
-        case 'UPDATE_ADMIN':
-            if (!state.admin) return state;
+        case 'UPDATE_USER':
+            if (!state.user) return state;
 
             return {
                 ...state,
-                admin: { ...state.admin, ...action.payload },
+                user: { ...state.user, ...action.payload },
             };
 
         default:
@@ -80,7 +78,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 };
 
 const initialState: AuthState = {
-    admin: null,
+    user: null,
     token: null,
     isAuthenticated: false,
     isLoading: true
@@ -96,27 +94,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [state, dispatch] = useReducer(authReducer, initialState);
 
     useEffect(() => {
-        if (state.admin) {
-            storage.setUser(state.admin)
+        if (state.user) {
+            storage.setUser(state.user);
         }
-    }, [state.admin]);
+    }, [state.user]);
 
     const logout = useCallback(() => {
         storage.clearAuth();
         dispatch({ type: 'LOGOUT' });
+        toast.info('Logged out successfully', {
+            description: 'You have been signed out of your account'
+        });
     }, []);
 
     useEffect(() => {
         const restoreSession = () => {
             const storedToken = storage.getToken();
-            const storedAdmin = storage.getUser<Admin>();
+            const storedUser = storage.getUser<User>();
 
             if (storedToken) {
                 dispatch({
                     type: 'RESTORE_SESSION',
                     payload: {
                         token: storedToken,
-                        admin: storedAdmin,
+                        user: storedUser,
                     },
                 });
             } else {
@@ -130,39 +131,42 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     useEffect(() => {
         const handleSessionExpired = () => {
             logout();
+            toast.error('Session expired', {
+                description: 'Please log in again to continue'
+            });
         }
 
         window.addEventListener('auth:session-expired', handleSessionExpired);
         return () => window.removeEventListener('auth:session-expired', handleSessionExpired);
     }, [logout]);
 
-    const login = useCallback(({ token, admin }: { token: string; admin: Admin }) => {
+    const login = useCallback(({ token, user }: { token: string; user: User }) => {
         storage.setToken(token);
-        storage.setUser(admin);
+        storage.setUser(user);
 
         dispatch({
             type: 'LOGIN_SUCCESS',
-            payload: { token, admin },
+            payload: { token, user },
         });
     }, []);
 
-    const updateAdmin = useCallback((updates: Partial<Admin>) => {
-        dispatch({ type: 'UPDATE_ADMIN', payload: updates });
+    const updateUser = useCallback((updates: Partial<User>) => {
+        dispatch({ type: 'UPDATE_USER', payload: updates });
     }, []);
 
     const isAdmin = useCallback(() => {
-        return state.admin?.role === 'admin';
-    }, [state.admin]);
+        return state.user?.role === 'admin';
+    }, [state.user]);
 
     const isViewer = useCallback(() => {
-        return state.admin?.role === 'viewer';
-    }, [state.admin]);
+        return state.user?.role === 'viewer';
+    }, [state.user]);
 
     const value: AuthContextValue = {
         ...state,
         login,
         logout,
-        updateAdmin,
+        updateUser,
         isAdmin,
         isViewer,
     };
@@ -180,3 +184,5 @@ export const useAuth = (): AuthContextValue => {
 
     return context;
 };
+
+export type { User, AdminRole };
