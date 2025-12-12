@@ -3,6 +3,7 @@ import helmet from "helmet";
 import compression from "compression";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
+import statsRoutes from "./routes/statsRoutes.js";
 
 const app: Express = express();
 
@@ -46,5 +47,6 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/api/auth", authRoutes);
+app.use("/stats", statsRoutes);
 
 export default app;

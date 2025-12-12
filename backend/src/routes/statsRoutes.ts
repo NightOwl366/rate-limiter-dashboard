@@ -5,7 +5,7 @@ import { checkRedisHealth } from "../config/redis.js";
 
 const router = Router();
 
-router.get("/", checkRedisHealth);
+router.get("/health", checkRedisHealth);
 router.get("/overview", protect, getOverview);
 
 export default router;
