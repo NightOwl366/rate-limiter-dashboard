@@ -1,6 +1,7 @@
 import app from "./app.js";
 import mongoose from "mongoose";
 import { seedAdmin } from "./utils/seedAdmin.js";
+import { connectRedis, disconnectRedis } from "./config/redis.js";
 
 type ShutdownSignal = "SIGTERM" | "SIGINT";
 
@@ -46,15 +47,21 @@ const connectDatabase = async (): Promise<void> => {
 };
 
 const startServer = async (): Promise<void> => {
-  await connectDatabase();
-  await seedAdmin();
+  try {
+    await connectDatabase();
+    await connectRedis();
+    await seedAdmin();
 
-  const PORT = process.env.PORT;
-  server = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Started at: ${new Date().toISOString()}`);
-  });
+    const PORT = process.env.PORT;
+    server = app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`Started at: ${new Date().toISOString()}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
 };
 
 const gracefulShutdown = async (signal: ShutdownSignal): Promise<void> => {
@@ -90,6 +97,8 @@ const gracefulShutdown = async (signal: ShutdownSignal): Promise<void> => {
       await mongoose.connection.close(false);
       console.log("MongoDB connection closed");
     }
+
+    await disconnectRedis();
 
     clearTimeout(shutdownTimer);
     console.log("Graceful shutdown completed");
