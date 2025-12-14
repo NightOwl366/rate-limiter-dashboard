@@ -5,6 +5,7 @@ import { REDIS_KEYS, getMultiple, isRedisConnected } from "../utils/redisUtils.j
 interface StatsOverview {
     totalRequests: number;
     blockedRequests: number;
+    allowedRequests: number;
     bannedIPs: number;
     currentRateLimit: {
         points: number;
@@ -29,6 +30,7 @@ export const getOverview = async (
         const keys = [
             REDIS_KEYS.STATS.TOTAL_REQUESTS,
             REDIS_KEYS.STATS.BLOCKED_REQUESTS,
+            REDIS_KEYS.STATS.ALLOWED_REQUESTS,
             REDIS_KEYS.FIREWALL.BANNED_COUNT,
             REDIS_KEYS.RATE_LIMIT.CONFIG_POINTS,
             REDIS_KEYS.RATE_LIMIT.CONFIG_DURATION,
@@ -39,6 +41,7 @@ export const getOverview = async (
         const [
             totalRequestsStr,
             blockedRequestsStr,
+            allowedRequestsStr,
             bannedIPsStr,
             rateLimitPointsStr,
             rateLimitDurationStr,
@@ -46,6 +49,7 @@ export const getOverview = async (
 
         const totalRequests = totalRequestsStr ? parseInt(totalRequestsStr, 10) || 0 : 0;
         const blockedRequests = blockedRequestsStr ? parseInt(blockedRequestsStr, 10) || 0 : 0;
+        const allowedRequests = allowedRequestsStr ? parseInt(allowedRequestsStr, 10) || 0 : 0;
         const bannedIPs = bannedIPsStr ? parseInt(bannedIPsStr, 10) || 0 : 0;
         const rateLimitPoints = rateLimitPointsStr
             ? parseInt(rateLimitPointsStr, 10) || DEFAULT_RATE_LIMIT.POINTS
@@ -57,6 +61,7 @@ export const getOverview = async (
         const stats: StatsOverview = {
             totalRequests,
             blockedRequests,
+            allowedRequests,
             bannedIPs,
             currentRateLimit: {
                 points: rateLimitPoints,

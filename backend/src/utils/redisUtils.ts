@@ -4,14 +4,20 @@ export const REDIS_KEYS = {
     STATS: {
         TOTAL_REQUESTS: "stats:requests:total",
         BLOCKED_REQUESTS: "stats:requests:blocked",
+        ALLOWED_REQUESTS: "stats:requests:allowed",
     },
     FIREWALL: {
         BANNED_COUNT: "firewall:banned:count",
         BANNED_IP_PREFIX: "firewall:banned:ip:",
+        BLOCKED_IP_PREFIX: "firewall:blocked:",
     },
     RATE_LIMIT: {
         CONFIG_POINTS: "ratelimit:config:points",
         CONFIG_DURATION: "ratelimit:config:duration",
+        IP_PREFIX: "rate:ip:",
+    },
+    IP_STATS: {
+        PREFIX: "stats:ips:",
     },
 } as const;
 
