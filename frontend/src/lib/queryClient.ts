@@ -1,7 +1,19 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryCache } from '@tanstack/react-query';
 import { AxiosError } from "axios";
 
 export const queryClient = new QueryClient({
+    queryCache: new QueryCache({
+        onError: (error) => {
+            if (error instanceof Error) {
+                const axiosError = error as AxiosError;
+
+                if (axiosError.response?.status === 401) {
+                    window.dispatchEvent(new Event('auth:session-expired'));
+                }
+            }
+        }
+    }),
+
     defaultOptions: {
         queries: {
             staleTime: 3000,
