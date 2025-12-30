@@ -6,6 +6,7 @@ import type {
   InternalAxiosRequestConfig,
 } from "axios";
 import { storage } from '@/utils/storage.js';
+import type { ApiResponse } from '@/types/api.js';
 
 interface ApiConfig {
   baseURL: string;
@@ -13,18 +14,13 @@ interface ApiConfig {
   withCredentials: boolean;
 }
 
-interface RefreshResponse {
-  success: boolean;
-  message: string;
-  timestamp: string;
-  data: {
-    accessToken: string;
-    user: {
-      id: string;
-      name: string;
-      email: string;
-      role: string;
-    };
+interface RefreshTokenData {
+  accessToken: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
   };
 }
 
@@ -102,7 +98,16 @@ apiClient.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const { data } = await apiClient.post<RefreshResponse>('/auth/refresh');
+      const { data } = await apiClient.post<ApiResponse<RefreshTokenData>>('/auth/refresh');
+
+      if (!data.success) {
+        throw new Error(data.error);
+      }
+
+      if (!data.data?.accessToken) {
+        throw new Error('Invalid refresh token response');
+      }
+
       const newToken = data.data.accessToken;
 
       storage.setToken(newToken);

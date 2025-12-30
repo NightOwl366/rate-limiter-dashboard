@@ -196,3 +196,26 @@ export const logout = async (
     return sendError(res, 500, "An error occurred during logout");
   }
 };
+
+export const getCurrentUser = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const user = req.user;  
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: "User not authenticated",
+      });
+    }
+    return sendSuccess(res, 200, "User retrieved successfully", {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+  } catch (error) {
+    console.error("Get current user error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to retrieve user",
+    });
+  }
+};
