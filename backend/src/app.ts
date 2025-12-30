@@ -2,6 +2,7 @@ import express, { Express } from "express";
 import helmet from "helmet";
 import compression from "compression";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { rateLimiter } from "./middleware/rateLimiter.js";
 import { firewall } from "./middleware/firewall.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -47,6 +48,7 @@ app.use(
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser());
 
 app.use(firewall);
 app.use("/api/stats", statsRoutes);

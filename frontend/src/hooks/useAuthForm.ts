@@ -30,7 +30,11 @@ export const useAuthForm = (endpoint: string): UseAuthFormReturn => {
                 formData
             );
 
-            if (!data.success || !data.data?.accessToken || !data.data?.user) {
+            if (!data.success) {
+                throw new Error(data.error);
+            }
+
+            if (!data.data?.accessToken || !data.data?.user) {
                 throw new Error('Invalid response format');
             }
 
@@ -44,7 +48,7 @@ export const useAuthForm = (endpoint: string): UseAuthFormReturn => {
             toast.success('Login successful!', {
                 description: `Welcome back, ${user.name}!`
             });
-            
+
             navigate('/dashboard', { replace: true });
         } catch (error) {
             const errorMessage = getErrorMessage(error);
@@ -73,6 +77,11 @@ const getErrorMessage = (error: unknown): string => {
             return 'Network error. Please check your connection.';
         }
 
+        const responseData = error.response.data as ApiResponse | undefined;
+        if (responseData && !responseData.success) {
+            return responseData.error;
+        }
+
         const serverMessage = error.response.data?.error || error.response.data?.message;
         if (serverMessage) return serverMessage;
 
@@ -90,4 +99,4 @@ const getErrorMessage = (error: unknown): string => {
     }
 
     return 'An unexpected error occurred. Please try again.';
-};
+}
