@@ -5,6 +5,7 @@ export const REDIS_KEYS = {
         TOTAL_REQUESTS: "stats:requests:total",
         BLOCKED_REQUESTS: "stats:requests:blocked",
         ALLOWED_REQUESTS: "stats:requests:allowed",
+        PER_MINUTE_PREFIX: "stats:requests:per_minute:",
     },
     FIREWALL: {
         BANNED_COUNT: "firewall:banned:count",
@@ -18,8 +19,11 @@ export const REDIS_KEYS = {
     },
     IP_STATS: {
         PREFIX: "stats:ips:",
+        SORTED_SET: "stats:ips:sorted",
     },
 } as const;
+
+const TIME_SERIES_TTL = 7 * 24 * 60 * 60;
 
 export const getInt = async (
     key: string,
@@ -123,4 +127,123 @@ export const deleteKeys = async (
 
 export const isRedisConnected = (): boolean => {
     return isRedisReady();
+};
+
+export const generateTimeKey = (date: Date = new Date()): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+
+    return `${year}${month}${day}-${hours}${minutes}`;
+};
+
+export const incrementTimeSeries = async (
+    prefix: string,
+    timestamp?: string
+): Promise<number> => {
+    try {
+        const timeKey = timestamp || generateTimeKey();
+        const key = `${prefix}${timeKey}`;
+
+        const newCount = await increment(key, 1);
+
+        if (newCount === 1) {
+            await redisClient.expire(key, TIME_SERIES_TTL);
+        }
+
+        return newCount;
+    } catch (error) {
+        console.error(`Error incrementing time series for ${prefix}:`, error);
+        throw error;
+    }
+};
+
+export const getTimeSeriesRange = async (
+    prefix: string,
+    startTime: string,
+    endTime: string
+): Promise<Array<{ timestamp: string; count: number }>> => {
+    try {
+        const keys: string[] = [];
+
+        //20250130-1430 to 2025-01-30T14:30:00 because JS Date requires this format
+        const start = new Date(
+            `${startTime.substring(0, 4)}-${startTime.substring(4, 6)}-${startTime.substring(6, 8)}
+            T${startTime.substring(9, 11)}:${startTime.substring(11, 13)}:00`
+        )
+        const end = new Date(
+            `${endTime.substring(0, 4)}-${endTime.substring(4, 6)}-${endTime.substring(6, 8)}
+            T${endTime.substring(9, 11)}:${endTime.substring(11, 13)}:00`
+        );
+
+        const current = new Date(start);
+        while (current <= end) {
+            const timeKey = generateTimeKey(current);
+            keys.push(`${prefix}${timeKey}`);
+            current.setMinutes(current.getMinutes() + 1);
+        }
+
+        const values = await getMultiple(keys);
+
+        return keys.map((key, index) => ({
+            timestamp: key.replace(prefix, ""),
+            count: values[index] ? parseInt(values[index]!, 10) || 0 : 0, //  ||0 prevents NaN
+        }));
+    } catch (error) {
+        console.error("Error getting time series range:", error);
+        return [];
+    }
+};
+
+export const incrementSortedSet = async (
+    key: string,
+    member: string,
+    amount: number = 1,
+): Promise<number> => {
+    try {
+        const newScore = await redisClient.zincrby(key, amount, member);
+        return parseFloat(newScore);  //Redis allows decimal scores in ZSETs.
+    } catch (error) {
+        console.error(`Error incrementing sorted set ${key} for member ${member}:`, error);
+        throw error;
+    }
+};
+
+export const getTopFromSortedSet = async (
+    key: string,
+    count: number = 10,
+): Promise<Array<{ member: string; score: number }>> => {
+    try {
+        const results = await redisClient.zrevrange(key, 0, count - 1, "WITHSCORES");
+
+        const formatted: Array<{ member: string; score: number }> = [];
+
+        // Results format: [member1, score1, member2, score2, ...]
+        for (let i = 0; i < results.length; i += 2) {
+            formatted.push({
+                member: results[i],
+                score: parseFloat(results[i + 1]),
+            });
+        }
+
+        return formatted;
+    } catch (error) {
+        console.error(`Error getting top from sorted set ${key}:`, error);
+        return [];
+    }
+};
+
+export const removeFromSortedSet = async (
+    key: string,
+    member: string
+): Promise<number> => {
+    //1 - member existed and was removed & 0 - member did not exist
+    try {
+        return await redisClient.zrem(key, member);
+    } catch (error) {
+        console.error(`Error removing from sorted set ${key} member ${member}:`, error);
+        return 0;
+    }
 };
