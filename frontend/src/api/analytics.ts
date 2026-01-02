@@ -1,6 +1,6 @@
 import { api } from './axiosConfig';
-import type { ApiResponse } from '../types/api';
-import type { RequestTimelineResponse, TimelineDuration } from '../types/analytics';
+import type { ApiResponse } from '@/types/api';
+import type { RequestTimelineResponse, TimelineDuration } from '@/types/analytics';
 
 export const analyticsAPI = {
     getRequestTimeline: async (duration: TimelineDuration = 'hour'): Promise<RequestTimelineResponse> => {

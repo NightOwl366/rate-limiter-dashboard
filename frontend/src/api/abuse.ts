@@ -1,5 +1,5 @@
 import { api } from './axiosConfig';
-import type { ApiResponse } from '../types/api';
+import type { ApiResponse } from '@/types/api';
 import type {
     TopIPsResponse,
     BanIPRequest,
@@ -7,7 +7,7 @@ import type {
     BanIPResponse,
     UnbanIPResponse,
     ResetIPStatsResponse,
-} from '../types/abuse';
+} from '@/types/abuse';
 
 export const abuseAPI = {
     getTopIPs: async (limit: number = 50): Promise<TopIPsResponse> => {
