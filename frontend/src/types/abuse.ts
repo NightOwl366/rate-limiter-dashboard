@@ -42,3 +42,7 @@ export interface ResetIPStatsResponse {
     removedFromRanking: boolean;
     removedCounter: boolean;
 }
+
+export type BanIPMutationContext = {
+  previousData?: TopIPsResponse;
+};
