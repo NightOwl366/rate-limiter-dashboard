@@ -3,6 +3,7 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { abuseAPI } from '@/api/abuse';
 import type { TopIPsResponse } from '@/types/abuse';
+import type { ApiError } from '@/types/api';
 
 interface UseTopIPsOptions {
     limit?: number;
@@ -12,14 +13,14 @@ interface UseTopIPsOptions {
 
 export const useTopIPs = (
     options: UseTopIPsOptions = {}
-): UseQueryResult<TopIPsResponse, AxiosError> => {
+): UseQueryResult<TopIPsResponse, AxiosError<ApiError>>  => {
     const {
         limit = 50,
         enabled = true,
         refetchInterval = 5000,
     } = options;
 
-    return useQuery<TopIPsResponse, AxiosError>({
+    return useQuery<TopIPsResponse, AxiosError<ApiError>>({
         queryKey: ['top-ips', limit],
         queryFn: () => abuseAPI.getTopIPs(limit),
         enabled,
