@@ -3,6 +3,8 @@ import { PublicRoute } from './PublicRoute';
 import Login from '@/pages/Login.jsx';
 import Dashboard from '@/pages/Dashboard';
 import { ProtectedRoute } from './ProtectedRoute';
+import Analytics from '@/pages/Analytics';
+import IPManagement from '@/pages/IPManagement';
 
 export const AppRoutes = () => {
   return (
@@ -15,6 +17,8 @@ export const AppRoutes = () => {
 
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/analytics" element={<Analytics/>} />
+        <Route path="/ips" element={<IPManagement />} />
       </Route>
     </Routes>
   );

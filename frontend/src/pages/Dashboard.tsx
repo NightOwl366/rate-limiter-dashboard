@@ -7,8 +7,9 @@ import { StatsGridSkeleton } from '@/components/stats/StatsGridSkeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { RefreshCw, LogOut, AlertCircle } from 'lucide-react';
+import { RefreshCw, LogOut, AlertCircle, BarChart3, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
     const { user, logout, isAdmin } = useAuth();
@@ -65,6 +66,19 @@ const Dashboard = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
+                        <Link to="/analytics">
+                            <Button variant="ghost" size="sm">
+                                <BarChart3 className="mr-2 h-4 w-4" />
+                                Analytics
+                            </Button>
+                        </Link>
+                        <Link to="/ips">
+                            <Button variant="ghost" size="sm">
+                                <Shield className="mr-2 h-4 w-4" />
+                                IP Management
+                            </Button>
+                        </Link>
+
                         {!isLoading && !error && (
                             <Button
                                 variant="outline"
