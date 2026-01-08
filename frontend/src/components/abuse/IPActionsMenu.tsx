@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { Shield, ShieldCheck, Trash2, MoreVertical } from 'lucide-react';
-import BasicDropdown from '@/components/smoothui/basic-dropdown';
-import type{ DropdownItem } from '@/components/smoothui/basic-dropdown';
 import { Button } from '@/components/ui/button';
 import { BanIPDialog } from './BanIPDialog';
 import { UnbanConfirmDialog } from './UnbanConfirmDialog';
@@ -19,6 +17,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Loader2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface IPActionsMenuProps {
   ipInfo: IPInfo;
@@ -28,56 +32,9 @@ export const IPActionsMenu = ({ ipInfo }: IPActionsMenuProps) => {
   const { isAdmin } = useAuth();
   const { mutate: resetStats, isPending: isResetting } = useResetIPStats();
 
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [unbanDialogOpen, setUnbanDialogOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
-
-  // dropdown items based on IP status and user role
-  const getDropdownItems = (): DropdownItem[] => {
-    const items: DropdownItem[] = [];
-
-    if (!isAdmin()) return items; // Viewers can't perform actions
-
-    if (ipInfo.isBlocked) {
-      items.push({
-        id: 'unban',
-        label: 'Unban IP',
-        icon: <ShieldCheck className="h-4 w-4 text-green-600" />,
-      });
-    } else {
-      items.push({
-        id: 'ban',
-        label: 'Ban IP',
-        icon: <Shield className="h-4 w-4 text-destructive" />,
-      });
-    }
-
-    // Reset stats option (always available for admins)
-    items.push({
-      id: 'reset',
-      label: 'Reset Stats',
-      icon: <Trash2 className="h-4 w-4 text-orange-600" />,
-    });
-
-    return items;
-  };
-
-  const handleActionSelect = (item: DropdownItem) => {
-    setDropdownOpen(false);
-    
-    switch (item.id) {
-      case 'ban':
-        setBanDialogOpen(true);
-        break;
-      case 'unban':
-        setUnbanDialogOpen(true);
-        break;
-      case 'reset':
-        setResetDialogOpen(true);
-        break;
-    }
-  };
 
   const handleResetStats = () => {
     resetStats(ipInfo.ip, {
@@ -87,43 +44,46 @@ export const IPActionsMenu = ({ ipInfo }: IPActionsMenuProps) => {
     });
   };
 
-  const items = getDropdownItems();
-
   // Don't show menu if user is not admin
   if (!isAdmin()) {
     return null;
   }
 
-  // Don't show menu if no actions available
-  if (items.length === 0) {
-    return null;
-  }
-
   return (
     <>
-      {/* Trigger Button */}
-      <div className="relative inline-block">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setDropdownOpen(!dropdownOpen)}
-          className="h-8 w-8"
-        >
-          <MoreVertical className="h-4 w-4" />
-        </Button>
-
-        {/* Dropdown Component */}
-        {dropdownOpen && (
-          <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <BasicDropdown
-              label="Actions"
-              items={items}
-              onChange={handleActionSelect}
-              className="absolute right-0 top-0 z-50"
-            />
-          </div>
-        )}
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          {ipInfo.isBlocked ? (
+            <DropdownMenuItem
+              onClick={() => setUnbanDialogOpen(true)}
+              className="cursor-pointer text-green-600 focus:text-green-600 focus:bg-accent"
+            >
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              <span>Unban IP</span>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onClick={() => setBanDialogOpen(true)}
+              className="cursor-pointer text-destructive focus:text-destructive focus:bg-accent"
+            >
+              <Shield className="mr-2 h-4 w-4" />
+              <span>Ban IP</span>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            onClick={() => setResetDialogOpen(true)}
+            className="cursor-pointer text-orange-600 focus:text-orange-600 focus:bg-accent"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            <span>Reset Stats</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Ban Dialog */}
       <BanIPDialog

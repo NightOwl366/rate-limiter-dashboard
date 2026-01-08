@@ -9,6 +9,7 @@ import {
     isRedisConnected,
     incrementTimeSeries,
     incrementSortedSet,
+    generateTimeKey
 } from "../utils/redisUtils.js";
 import redisClient from "../config/redis.js";
 
@@ -134,13 +135,14 @@ const setRateLimitHeaders = (
 
 const trackAnalytics = async (
     ip: string,
-    blocked?: boolean
 ): Promise<void> => {
     try {
+        const now = new Date();
+        const timeKey = generateTimeKey(now);
         const ipKey = `${REDIS_KEYS.IP_STATS.PREFIX}${ip}`;
 
         await Promise.all([
-            incrementTimeSeries(REDIS_KEYS.STATS.PER_MINUTE_PREFIX),
+            incrementTimeSeries(REDIS_KEYS.STATS.PER_MINUTE_PREFIX, timeKey),
             incrementSortedSet(REDIS_KEYS.IP_STATS.SORTED_SET, ip, 1),
             increment(ipKey)
         ]);
@@ -169,7 +171,7 @@ export const rateLimiter = async (
         const { count: currentCount, ttl } = await getTokenCount(ip, config.duration);
 
         if (currentCount >= config.points) {
-            trackAnalytics(ip, true).catch((err) => {
+            trackAnalytics(ip).catch((err) => {
                 console.error("Analytics tracking error:", err);     //If this Promise fails, handle it here
             });
 
@@ -193,7 +195,7 @@ export const rateLimiter = async (
 
         const newCount = await consumeToken(ip, config.duration);
 
-        trackAnalytics(ip, false).catch((err) => {
+        trackAnalytics(ip).catch((err) => {
             console.error("Analytics tracking error:", err);      //If this Promise fails, handle it here
         });
 

@@ -68,13 +68,13 @@ const Dashboard = () => {
                     <div className="flex items-center gap-3">
                         <Link to="/analytics">
                             <Button variant="ghost" size="sm">
-                                <BarChart3 className="mr-2 h-4 w-4" />
+                                <BarChart3 className="mr-0.5 h-4 w-4" />
                                 Analytics
                             </Button>
                         </Link>
                         <Link to="/ips">
                             <Button variant="ghost" size="sm">
-                                <Shield className="mr-2 h-4 w-4" />
+                                <Shield className="mr-0.5 h-4 w-4" />
                                 IP Management
                             </Button>
                         </Link>

@@ -41,9 +41,12 @@ const generateTimeRange = (minutesBack: number): { startTime: string; endTime: s
     //now(in milliseconds) - minutesBack(converts minutes → milliseconds)
     const start = new Date(now.getTime() - minutesBack * 60 * 1000);
 
+    const startKey = generateTimeKey(start);
+    const endKey = generateTimeKey(now);
+
     return {
-        startTime: generateTimeKey(start),
-        endTime: generateTimeKey(now),
+        startTime: startKey,
+        endTime: endKey,
     };
 };
 

@@ -170,12 +170,10 @@ export const getTimeSeriesRange = async (
 
         //20250130-1430 to 2025-01-30T14:30:00 because JS Date requires this format
         const start = new Date(
-            `${startTime.substring(0, 4)}-${startTime.substring(4, 6)}-${startTime.substring(6, 8)}
-            T${startTime.substring(9, 11)}:${startTime.substring(11, 13)}:00`
-        )
+            `${startTime.substring(0, 4)}-${startTime.substring(4, 6)}-${startTime.substring(6, 8)}T${startTime.substring(9, 11)}:${startTime.substring(11, 13)}:00`
+        );
         const end = new Date(
-            `${endTime.substring(0, 4)}-${endTime.substring(4, 6)}-${endTime.substring(6, 8)}
-            T${endTime.substring(9, 11)}:${endTime.substring(11, 13)}:00`
+            `${endTime.substring(0, 4)}-${endTime.substring(4, 6)}-${endTime.substring(6, 8)}T${endTime.substring(9, 11)}:${endTime.substring(11, 13)}:00`
         );
 
         const current = new Date(start);

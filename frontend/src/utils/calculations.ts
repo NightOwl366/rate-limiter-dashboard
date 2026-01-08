@@ -67,11 +67,13 @@ export const calculateTimeRemaining = (expiresAt: string): string => {
 
 /**
  * Format timestamp for display
- * @param timestamp - Timestamp string from backend (format: "20250130-1430")
- * @returns Formatted time (e.g., "14:30")
+ * @param timestamp - Timestamp string from backend (format: "20260105-2127")
+ * @returns Formatted time (e.g., "21:27")
  */
 export const formatTimelineTimestamp = (timestamp: string): string => {
-    // Extract hours and minutes from "20250130-1430"
+    if (!timestamp || timestamp.length < 13) {
+        return '00:00';
+    }
     const hours = timestamp.substring(9, 11);
     const minutes = timestamp.substring(11, 13);
     return `${hours}:${minutes}`;

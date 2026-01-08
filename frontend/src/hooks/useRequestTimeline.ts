@@ -7,7 +7,7 @@ import type { RequestTimelineResponse, TimelineDuration } from '@/types/analytic
 interface UseRequestTimelineOptions {
     duration?: TimelineDuration;
     enabled?: boolean;
-    refetchInterval?: number;
+    refetchInterval?: number | false;
 }
 
 export const useRequestTimeline = (
@@ -19,12 +19,11 @@ export const useRequestTimeline = (
         refetchInterval = 10000,
     } = options;
 
-    return useQuery<RequestTimelineResponse, AxiosError>({
+    return useQuery({
         queryKey: ['request-timeline', duration],
         queryFn: () => analyticsAPI.getRequestTimeline(duration),
         enabled,
         refetchInterval,
         refetchIntervalInBackground: false,
-        staleTime: 5000,
     });
 };

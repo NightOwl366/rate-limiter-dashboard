@@ -1,8 +1,9 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
+import { LogOut, Shield, Home } from 'lucide-react';
 import { RequestTimelineChart } from '@/components/analytics/RequestTimelineChart';
 import { Separator } from '@/components/ui/separator';
+import { Link } from 'react-router-dom';
 
 const Analytics = () => {
   const { user, logout } = useAuth();
@@ -24,6 +25,19 @@ const Analytics = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link to="/dashboard">
+              <Button variant="ghost" size="sm">
+                <Home className="mr-0.5 h-4 w-4" />
+                Dashboard
+              </Button>
+            </Link>
+            <Link to="/ips">
+              <Button variant="ghost" size="sm">
+                <Shield className="mr-0.5 h-4 w-4" />
+                IP Management
+              </Button>
+            </Link>
+
             <span className="text-sm text-muted-foreground">{user?.name}</span>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
