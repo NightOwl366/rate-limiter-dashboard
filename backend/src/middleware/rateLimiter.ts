@@ -7,6 +7,9 @@ import {
     setValue,
     increment,
     isRedisConnected,
+    incrementTimeSeries,
+    incrementSortedSet,
+    generateTimeKey
 } from "../utils/redisUtils.js";
 import redisClient from "../config/redis.js";
 
@@ -56,7 +59,7 @@ const getTokenCount = async (
         const count = await getInt(key, 0);
 
         let ttl = await redisClient.ttl(key);
-        if (ttl === -1 || ttl === -2) {
+        if (ttl === -1 || ttl === -2) {            // -1=(key exists but no expiry) , -2=(key doesn’t exist)
             ttl = duration;
         }
 
@@ -130,6 +133,25 @@ const setRateLimitHeaders = (
     res.setHeader("X-RateLimit-Reset", info.resetTime.toString());
 };
 
+const trackAnalytics = async (
+    ip: string,
+): Promise<void> => {
+    try {
+        const now = new Date();
+        const timeKey = generateTimeKey(now);
+        const ipKey = `${REDIS_KEYS.IP_STATS.PREFIX}${ip}`;
+
+        await Promise.all([
+            incrementTimeSeries(REDIS_KEYS.STATS.PER_MINUTE_PREFIX, timeKey),
+            incrementSortedSet(REDIS_KEYS.IP_STATS.SORTED_SET, ip, 1),
+            increment(ipKey)
+        ]);
+    } catch (error) {
+        console.error(`Error tracking analytics for ${ip}:`, error);
+        // analytics failure shouldn't block requests
+    }
+};
+
 
 export const rateLimiter = async (
     req: Request,
@@ -149,6 +171,10 @@ export const rateLimiter = async (
         const { count: currentCount, ttl } = await getTokenCount(ip, config.duration);
 
         if (currentCount >= config.points) {
+            trackAnalytics(ip).catch((err) => {
+                console.error("Analytics tracking error:", err);     //If this Promise fails, handle it here
+            });
+
             await increment(REDIS_KEYS.STATS.BLOCKED_REQUESTS);
 
             const violations = await trackViolation(ip);
@@ -169,6 +195,10 @@ export const rateLimiter = async (
 
         const newCount = await consumeToken(ip, config.duration);
 
+        trackAnalytics(ip).catch((err) => {
+            console.error("Analytics tracking error:", err);      //If this Promise fails, handle it here
+        });
+
         const remaining = Math.max(0, config.points - newCount);
         const resetTime = Math.floor(Date.now() / 1000) + ttl;
 
@@ -178,8 +208,12 @@ export const rateLimiter = async (
             total: config.points,
         });
 
-        await increment(REDIS_KEYS.STATS.TOTAL_REQUESTS);
-        await increment(REDIS_KEYS.STATS.ALLOWED_REQUESTS);
+        await Promise.all([
+            increment(REDIS_KEYS.STATS.TOTAL_REQUESTS),
+            increment(REDIS_KEYS.STATS.ALLOWED_REQUESTS),
+        ]).catch(err => {
+            console.error("Stats increment failed:", err);
+        });
 
         next();
     } catch (error) {
