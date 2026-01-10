@@ -7,12 +7,24 @@ import {
     setValue,
     increment,
     isRedisConnected,
+    pushAndTrimList,
 } from "../utils/redisUtils.js";
 
 interface BlockedIpInfo {
     reason: string;
     blockedAt: string;
     expiresAt?: string;
+}
+
+interface RequestLog {
+    timestamp: string;
+    ip: string;
+    route: string;
+    method: string;
+    status: number;
+    type: "banned";
+    userAgent?: string;
+    reason?: string;
 }
 
 const BAN_DURATION = {
@@ -80,6 +92,30 @@ const trackIpRequest = async (ip: string): Promise<void> => {
     }
 };
 
+const logBannedRequest = async (
+    req: Request,
+    reason: string
+): Promise<void> => {
+    try {
+        const ip = req.clientIp || normalizeIp(getClientIp(req));
+
+        const logEntry: RequestLog = {
+            timestamp: new Date().toISOString(),
+            ip,
+            route: req.path,
+            method: req.method,
+            status: 403,
+            type: "banned",
+            userAgent: req.headers["user-agent"],
+            reason,
+        };
+
+        await pushAndTrimList(REDIS_KEYS.LOGS.REQUESTS, logEntry, 1000);
+    } catch (error) {
+        console.error("Error logging banned request:", error);
+    }
+};
+
 export const firewall = async (
     req: Request,
     res: Response,
@@ -98,8 +134,13 @@ export const firewall = async (
 
         const blockInfo = await checkBlockedIp(ip);
         if (blockInfo) {
+            logBannedRequest(req, blockInfo.reason).catch((err) => {
+                console.error("Banned request logging error:", err);
+            });
+
             await increment(REDIS_KEYS.STATS.BLOCKED_REQUESTS);
             console.log(`Blocked request from ${ip} | Reason: ${blockInfo.reason}`);
+            
             return sendError(res, 403, `Access denied. Reason: ${blockInfo.reason}`);
         }
 
@@ -109,7 +150,7 @@ export const firewall = async (
         console.error("Firewall middleware error:", error);
         next();
     }
-}
+};
 
 
 

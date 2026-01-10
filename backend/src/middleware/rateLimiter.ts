@@ -4,24 +4,36 @@ import { getClientIp, normalizeIp } from "../utils/ipExtractor.js";
 import {
     REDIS_KEYS,
     getInt,
-    setValue,
     increment,
     isRedisConnected,
     incrementTimeSeries,
     incrementSortedSet,
-    generateTimeKey
+    generateTimeKey,
+    getJSON,
+    setJSON,
+    pushAndTrimList,
 } from "../utils/redisUtils.js";
 import redisClient from "../config/redis.js";
 
 interface RateLimitConfig {
     points: number;
-    duration: number;
+    duration: number;  // seconds
 }
 
 interface RateLimitInfo {
     remaining: number;
     resetTime: number;
     total: number;
+}
+
+interface RequestLog {
+    timestamp: string;
+    ip: string;
+    route: string;
+    method: string;
+    status: number;
+    type: "allowed" | "blocked";
+    userAgent?: string;
 }
 
 const DEFAULT_RATE_LIMIT: RateLimitConfig = {
@@ -33,6 +45,12 @@ const AUTO_BAN_THRESHOLD = 3;
 
 const getRateLimitConfig = async (): Promise<RateLimitConfig> => {
     try {
+        const unifiedConfig = await getJSON<RateLimitConfig>(REDIS_KEYS.CONFIG.RATE_LIMIT, null);
+        if (unifiedConfig) {
+            return unifiedConfig;
+        }
+
+        // Fallback to legacy separate keys (backward compatibility)
         const points = await getInt(
             REDIS_KEYS.RATE_LIMIT.CONFIG_POINTS,
             DEFAULT_RATE_LIMIT.points
@@ -142,13 +160,38 @@ const trackAnalytics = async (
         const ipKey = `${REDIS_KEYS.IP_STATS.PREFIX}${ip}`;
 
         await Promise.all([
-            incrementTimeSeries(REDIS_KEYS.STATS.PER_MINUTE_PREFIX, timeKey),
-            incrementSortedSet(REDIS_KEYS.IP_STATS.SORTED_SET, ip, 1),
-            increment(ipKey)
+            incrementTimeSeries(REDIS_KEYS.STATS.PER_MINUTE_PREFIX, timeKey),   // Track per-minute timeline
+            incrementSortedSet(REDIS_KEYS.IP_STATS.SORTED_SET, ip, 1),   // Track per-IP stats in sorted set (for ranking)
+            increment(ipKey)  // Track per-IP counter
         ]);
     } catch (error) {
         console.error(`Error tracking analytics for ${ip}:`, error);
         // analytics failure shouldn't block requests
+    }
+};
+
+const logRequest = async (
+    req: Request,
+    status: number,
+    type: "allowed" | "blocked"
+): Promise<void> => {
+    try {
+        const ip = req.clientIp || normalizeIp(getClientIp(req));
+
+        const logEntry: RequestLog = {
+            timestamp: new Date().toISOString(),
+            ip,
+            route: req.path,
+            method: req.method,
+            status,
+            type,
+            userAgent: req.headers['user-agent']
+        };
+
+        await pushAndTrimList(REDIS_KEYS.LOGS.REQUESTS, logEntry, 1000);
+    } catch (error) {
+        console.error("Error logging request:", error);
+        // logging failure shouldn't block requests
     }
 };
 
@@ -171,8 +214,14 @@ export const rateLimiter = async (
         const { count: currentCount, ttl } = await getTokenCount(ip, config.duration);
 
         if (currentCount >= config.points) {
+            // Track analytics (blocked request)
             trackAnalytics(ip).catch((err) => {
                 console.error("Analytics tracking error:", err);     //If this Promise fails, handle it here
+            });
+
+            // Log blocked request 
+            logRequest(req, 429, "blocked").catch((err) => {
+                console.error("Request logging error:", err);
             });
 
             await increment(REDIS_KEYS.STATS.BLOCKED_REQUESTS);
@@ -195,8 +244,14 @@ export const rateLimiter = async (
 
         const newCount = await consumeToken(ip, config.duration);
 
+        // Track analytics (allowed request)
         trackAnalytics(ip).catch((err) => {
             console.error("Analytics tracking error:", err);      //If this Promise fails, handle it here
+        });
+
+        // Log allowed request
+        logRequest(req, 200, "allowed").catch((err) => {
+            console.error("Request logging error:", err);
         });
 
         const remaining = Math.max(0, config.points - newCount);
@@ -232,10 +287,17 @@ export const updateRateLimitConfig = async (
             return false;
         }
 
-        await setValue(REDIS_KEYS.RATE_LIMIT.CONFIG_POINTS, points);
-        await setValue(REDIS_KEYS.RATE_LIMIT.CONFIG_DURATION, duration);
-        console.log(`Rate limit updated: ${points} requests per ${duration}s`);
-        return true;
+        const config: RateLimitConfig = {
+            points,
+            duration
+        };
+
+        const success = await setJSON(REDIS_KEYS.CONFIG.RATE_LIMIT, config);
+        if (success) {
+            console.log(`Rate limit updated: ${points} requests per ${duration}s`);
+        }
+
+        return success;
     } catch (error) {
         console.error("Error updating rate limit config:", error);
         return false;
