@@ -21,9 +21,16 @@ export const REDIS_KEYS = {
         PREFIX: "stats:ips:",
         SORTED_SET: "stats:ips:sorted",
     },
+    CONFIG: {
+        RATE_LIMIT: "config:rate_limit"
+    },
+    LOGS: {
+        REQUESTS: "logs:requests"
+    }
 } as const;
 
 const TIME_SERIES_TTL = 7 * 24 * 60 * 60;
+const MAX_LOG_ENTRIES = 1000;
 
 export const getInt = async (
     key: string,
@@ -52,6 +59,23 @@ export const getString = async (
         return value ?? defaultValue;
     } catch (error) {
         console.error(`Redis getString error for key "${key}":`, error);
+        return defaultValue;
+    }
+};
+
+export const getJSON = async<T = any>(
+    key: string,
+    defaultValue: T | null = null
+): Promise<T | null> => {
+    try {
+        const value = await redisClient.get(key);
+        if (!value) {
+            return defaultValue;
+        }
+
+        return JSON.parse(value) as T;
+    } catch (error) {
+        console.error(`Redis getJSON error for key "${key}":`, error);
         return defaultValue;
     }
 };
@@ -108,6 +132,27 @@ export const setValue = async (
         return true;
     } catch (error) {
         console.error(`Redis setValue error for key "${key}":`, error);
+        return false;
+    }
+};
+
+export const setJSON = async (
+    key: string,
+    value: any,
+    expirySeconds?: number
+): Promise<boolean> => {
+    try {
+        const jsonString = JSON.stringify(value);
+
+        if (expirySeconds) {
+            await redisClient.setex(key, expirySeconds, jsonString);
+        } else {
+            await redisClient.set(key, jsonString);
+        }
+
+        return true;
+    } catch (error) {
+        console.error(`Redis setJSON error for key "${key}":`, error);
         return false;
     }
 };
@@ -243,5 +288,97 @@ export const removeFromSortedSet = async (
     } catch (error) {
         console.error(`Error removing from sorted set ${key} member ${member}:`, error);
         return 0;
+    }
+};
+
+export const pushToList = async (
+    key: string,
+    value: string | object
+): Promise<number> => {
+    try {
+        const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+        return await redisClient.lpush(key, stringValue);
+    } catch (error) {
+        console.error(`Error pushing to list ${key}:`, error);
+        throw error;
+    }
+};
+
+export const pushAndTrimList = async (
+    key: string,
+    value: string | object,
+    maxLength: number = MAX_LOG_ENTRIES
+): Promise<number> => {
+    try {
+        const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+
+        const pipeline = redisClient.pipeline();
+
+        pipeline.lpush(key, stringValue);
+        pipeline.ltrim(key, 0, maxLength - 1);
+
+        const results = await pipeline.exec();
+        /*results returns - [ error, result ]
+        results = [
+        [null, 101],    result of LPUSH
+        [null, "OK"]    result of LTRIM
+        ]
+        */
+
+        if (!results || results[0][0]) {
+            throw new Error("Pipeline execution failed");
+        }
+
+        return results[0][1] as number;   //value returned by LPUSH
+    } catch (error) {
+        console.error(`Error pushing and trimming list ${key}:`, error);
+        throw error;
+    }
+};
+
+export const getListRange = async (
+    key: string,
+    start: number = 0,   // first item (from left)
+    end: number = -1    // last item (from right)
+): Promise<string[]> => {
+    try {
+        return await redisClient.lrange(key, start, end);
+    } catch (error) {
+        console.error(`Error getting list range for ${key}:`, error);
+        return [];
+    }
+};
+
+export const getListLength = async (key: string): Promise<number> => {
+    try {
+        return await redisClient.llen(key);
+    } catch (error) {
+        console.error(`Error getting list length for ${key}:`, error);
+        return 0;
+    }
+};
+
+export const getJSONList = async<T = any>(
+    key: string,
+    start: number = 0,   // first item (from left)
+    end: number = -1    // last item (from right)
+): Promise<T[]> => {
+    try {
+        const items = await getListRange(key, start, end);
+
+        return items
+            .map((item) => {
+                try {
+                    return JSON.parse(item) as T;
+                    // Result after map: [ { ip: "1.1.1.1" }, { ip: "2.2.2.2" }, null, { ip: "3.3.3.3" } ] 
+                } catch (parseError) {
+                    console.error("Error parsing list item:", parseError);
+                    return null;
+                }
+            })
+            .filter((item): item is T => item !== null);  // Removes null
+    } catch (error) {
+        console.error(`Error getting JSON list for ${key}:`, error);
+        return [];
     }
 };
